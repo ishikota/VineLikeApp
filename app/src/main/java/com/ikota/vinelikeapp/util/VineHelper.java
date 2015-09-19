@@ -2,7 +2,6 @@ package com.ikota.vinelikeapp.util;
 
 
 import android.content.Context;
-import android.os.Environment;
 
 import com.googlecode.mp4parser.BasicContainer;
 import com.googlecode.mp4parser.authoring.Movie;
@@ -52,17 +51,14 @@ public class VineHelper {
             result.addTrack(new AppendTrack(videoTracks.toArray(new Track[videoTracks.size()])));
         }
 
-        BasicContainer out = (BasicContainer) new DefaultMp4Builder().build(result);
+        String file_path = CameraHelper.getOutputMediaFilePath(CameraHelper.MEDIA_TYPE_VIDEO);
+        if(file_path == null) return false;
 
-        FileChannel fc = new RandomAccessFile(Environment
-                .getExternalStorageDirectory() + "/wishbyvideo.mp4",
-                "rw").getChannel();
+        BasicContainer out = (BasicContainer) new DefaultMp4Builder().build(result);
+        FileChannel fc = new RandomAccessFile(file_path,"rw").getChannel();
         out.writeContainer(fc);
         fc.close();
-        String mFileName = Environment.getExternalStorageDirectory()
-                .getAbsolutePath();
-        mFileName += "/wishbyvideo.mp4";
-        File file = new File(mFileName);
+        File file = new File(file_path);
         CameraHelper.registerToMediaScanner(context, file);
 
         return true;

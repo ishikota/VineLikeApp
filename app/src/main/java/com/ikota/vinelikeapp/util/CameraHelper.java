@@ -144,7 +144,20 @@ public class CameraHelper {
      * @param type Media type. Can be video or image.
      * @return A file object pointing to the newly created file.
      */
-    public  static File getOutputMediaFile(int type){
+    public static File getOutputMediaFile(int type){
+        String path = getOutputMediaFilePath(type);
+        if(path == null) return null;
+        return new File(path);
+    }
+
+    /**
+     * Creates a media file in the "SAVE_DIR_NAME" directory. The directory
+     * is persistent and available to other applications like gallery.
+     *
+     * @param type Media type. Can be video or image.
+     * @return path to output file
+     */
+    public  static String getOutputMediaFilePath(int type){
         // To be safe, you should check that the SDCard is mounted
         // using Environment.getExternalStorageState() before doing this.
         if (!Environment.getExternalStorageState().equalsIgnoreCase(Environment.MEDIA_MOUNTED)) {
@@ -166,16 +179,16 @@ public class CameraHelper {
 
         // Create a media file name
         String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.ENGLISH).format(new Date());
-        File mediaFile;
+        String path;
         if (type == MEDIA_TYPE_IMAGE){
-            mediaFile = new File(mediaStorageDir.getPath() + File.separator + "IMG_"+ timeStamp + ".jpg");
+            path = mediaStorageDir.getPath() + File.separator + "IMG_"+ timeStamp + ".jpg";
         } else if(type == MEDIA_TYPE_VIDEO) {
-            mediaFile = new File(mediaStorageDir.getPath() + File.separator + "VID_"+ timeStamp + ".mp4");
+            path = mediaStorageDir.getPath() + File.separator + "VID_"+ timeStamp + ".mp4";
         } else {
             return null;
         }
 
-        return mediaFile;
+        return path;
     }
 
     public static void registerToMediaScanner(Context context, File pictureFile) {
