@@ -12,12 +12,18 @@ import java.util.ArrayList;
 
 public class CombineVideoTask extends AsyncTask<String, Void, Boolean>{
 
+    public interface OnCombinedListener {
+        void onCombined();
+    }
+
     private final Context mContext;
     private final ArrayList<File> mSrcMovies;
+    private final OnCombinedListener mCallback;
 
-    public CombineVideoTask(Context context, ArrayList<File> src_movies) {
+    public CombineVideoTask(Context context, ArrayList<File> src_movies, OnCombinedListener listener) {
         mContext = context;
         mSrcMovies = src_movies;
+        mCallback = listener;
     }
 
     @Override
@@ -39,5 +45,6 @@ public class CombineVideoTask extends AsyncTask<String, Void, Boolean>{
             message = "Failed to combine...";
         }
         Toast.makeText(mContext, message, Toast.LENGTH_SHORT).show();
+        if(mCallback!=null) mCallback.onCombined();
     }
 }

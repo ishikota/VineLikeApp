@@ -16,6 +16,7 @@
 
 package com.ikota.vinelikeapp.ui;
 
+import android.animation.ValueAnimator;
 import android.app.Activity;
 import android.graphics.SurfaceTexture;
 import android.hardware.Camera;
@@ -29,6 +30,7 @@ import android.view.MotionEvent;
 import android.view.TextureView;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Toast;
 
 import com.ikota.vinelikeapp.R;
 import com.ikota.vinelikeapp.util.CameraHelper;
@@ -61,7 +63,6 @@ public class MainActivity extends Activity implements TextureView.SurfaceTexture
 
     private Handler mHandler;
     private Timer mTimer;
-    private TimerTask mTimerTask;
 
 
     @Override
@@ -77,45 +78,22 @@ public class MainActivity extends Activity implements TextureView.SurfaceTexture
         mPreview.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-//                if (isRecording) {
-//                    mMediaRecorder.stop();  // stop the recording
-//                    isRecording = false;
-//                } else {
-//                    new MediaPrepareTask().execute(null, null, null);
-//                }
-//                int currentWidth = mHeaderOverlay.getWidth();
-//                int targetWidth = mHeaderOverlay.getWidth() + 100;
-//                ValueAnimator widthAnimator = ValueAnimator.ofInt(currentWidth, targetWidth);
-//                widthAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
-//                    @Override
-//                    public void onAnimationUpdate(ValueAnimator valueAnimator) {
-//                        int val = (Integer) valueAnimator.getAnimatedValue();
-//                        ViewGroup.LayoutParams layoutParams = mHeaderOverlay.getLayoutParams();
-//                        layoutParams.width = val;
-//                        mHeaderOverlay.setLayoutParams(layoutParams);
-//                    }
-//                });
-//                widthAnimator.setDuration(1000);
-//                widthAnimator.start();
+                // need click listener to invoke touch up event
             }
         });
-
         mPreview.setOnTouchListener(new View.OnTouchListener() {
             @Override
             public boolean onTouch(View view, MotionEvent event) {
                 switch (event.getAction()) {
                     case MotionEvent.ACTION_DOWN:
-                        startRecordingTime = System.currentTimeMillis();
-                        mTimerTask = new UpdateProgressTask();
-                        mTimer = new Timer(true);
-                        mTimer.schedule(mTimerTask, 100, 100);
-                        new MediaPrepareTask().execute(null, null, null);
-                        Log.d("time", String.format("startRecordingTime:%d(mills)",startRecordingTime));
+                        if(currentRecordingTime < VineHelper.MAX_RECORD_MILL) {
+                            new MediaPrepareTask().execute();
+                        } else {
+                            Toast.makeText(MainActivity.this, "No time left to record", Toast.LENGTH_SHORT).show();
+                        }
                         break;
                     case MotionEvent.ACTION_UP:
-                        mTimer.cancel();
-                        mTimer = null;
-                        mMediaRecorder.stop();  // stop the recording
+                        stopRecording();
                         break;
                 }
                 return false;
@@ -125,7 +103,26 @@ public class MainActivity extends Activity implements TextureView.SurfaceTexture
         findViewById(R.id.action_combine).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                new CombineVideoTask(MainActivity.this, mMovies).execute();
+                new CombineVideoTask(MainActivity.this, mMovies, new CombineVideoTask.OnCombinedListener() {
+                    @Override
+                    public void onCombined() {
+                        currentRecordingTime = 0;
+                        mMovies.clear();
+
+                        // reset progress with animation
+                        ValueAnimator animator = ValueAnimator.ofInt(mHeaderOverlay.getLayoutParams().width, 0);
+                        animator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+                            @Override
+                            public void onAnimationUpdate(ValueAnimator valueAnimator) {
+                                int val = (int)valueAnimator.getAnimatedValue();
+                                ViewGroup.LayoutParams layoutParams = mHeaderOverlay.getLayoutParams();
+                                layoutParams.width = val;
+                                mHeaderOverlay.setLayoutParams(layoutParams);
+                            }
+                        });
+                        animator.start();
+                    }
+                }).execute();
             }
         });
     }
@@ -137,20 +134,24 @@ public class MainActivity extends Activity implements TextureView.SurfaceTexture
         layoutParams.width = VineHelper.calcProgressSize(currentRecordingTime);
         mHeaderOverlay.setLayoutParams(layoutParams);
         Log.d("time", String.format("finishRecordingTime:%d(mills)", current_time));
-        Log.d("time", String.format("pressed time:%f(s)"           , (current_time - startRecordingTime)/1000.0));
-        Log.d("time", String.format("currentRecordingTime:%f(s)"   , currentRecordingTime/1000.0));
+        Log.d("time", String.format("pressed time:%f(s)", (current_time - startRecordingTime) / 1000.0));
+        Log.d("time", String.format("currentRecordingTime:%f(s)", currentRecordingTime / 1000.0));
         startRecordingTime = current_time;
+
+        if(currentRecordingTime >= VineHelper.MAX_RECORD_MILL) {
+            Log.d("time", String.format("Exceeded max recording time:%d/%d",currentRecordingTime, VineHelper.MAX_RECORD_MILL));
+            stopRecording();
+        }
     }
 
-    private class UpdateProgressTask extends TimerTask {
-        @Override
-        public void run() {
-            mHandler.post(new Runnable() {
-                @Override
-                public void run() {
-                    updateProgress();
-                }
-            });
+    private void stopRecording() {
+        if(mTimer != null) {
+            mTimer.cancel();
+            mTimer = null;
+        }
+        if(isRecording) {
+            isRecording = false;
+            mMediaRecorder.stop();  // stop the recording
         }
     }
 
@@ -166,6 +167,7 @@ public class MainActivity extends Activity implements TextureView.SurfaceTexture
             mMediaRecorder.reset();  // clear recorder configuration
             mMediaRecorder.release();  // release the recorder object
             mMediaRecorder = null;
+            isRecording = false;
             // Lock camera for later use i.e taking it back from MediaRecorder.
             // MediaRecorder doesn't need it anymore and we will release it if the activity pauses.
             mCamera.lock();
@@ -240,7 +242,6 @@ public class MainActivity extends Activity implements TextureView.SurfaceTexture
                 // Camera is available and unlocked, MediaRecorder is prepared,
                 // now you can start recording
                 mMediaRecorder.start();
-
                 isRecording = true;
             } else {
                 releaseMediaRecorder();  // prepare didn't work, release the camera
@@ -251,9 +252,27 @@ public class MainActivity extends Activity implements TextureView.SurfaceTexture
 
         @Override
         protected void onPostExecute(Boolean result) {
-            if (!result) {
+            if (result) {
+                startRecordingTime = System.currentTimeMillis();
+                TimerTask mTimerTask = new UpdateProgressTask();
+                mTimer = new Timer(true);
+                mTimer.schedule(mTimerTask, 100, 100);
+                Log.d("time", String.format("startRecordingTime:%d(mills)", startRecordingTime));
+            } else {
                 MainActivity.this.finish();
             }
+        }
+    }
+
+    private class UpdateProgressTask extends TimerTask {
+        @Override
+        public void run() {
+            mHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    updateProgress();
+                }
+            });
         }
     }
 
