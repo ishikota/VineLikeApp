@@ -9,6 +9,7 @@ import com.googlecode.mp4parser.authoring.Track;
 import com.googlecode.mp4parser.authoring.builder.DefaultMp4Builder;
 import com.googlecode.mp4parser.authoring.container.mp4.MovieCreator;
 import com.googlecode.mp4parser.authoring.tracks.AppendTrack;
+import com.ikota.vinelikeapp.ui.AndroidApplication;
 
 import java.io.File;
 import java.io.IOException;
@@ -18,6 +19,13 @@ import java.util.LinkedList;
 import java.util.List;
 
 public class VineHelper {
+
+    public static final int MAX_RECORD_MILL = 6000;
+
+    public static int calcProgressSize(double current_mill) {
+        double progress = current_mill/MAX_RECORD_MILL;
+        return (int)(AndroidApplication.SCREEN_WIDTH * progress);
+    }
 
     public static boolean combineVideo(Context context, List<File> src_movies) throws IOException {
         if(src_movies.isEmpty()) return false;

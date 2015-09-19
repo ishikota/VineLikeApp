@@ -23,18 +23,24 @@ import android.media.CamcorderProfile;
 import android.media.MediaRecorder;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.Handler;
 import android.util.Log;
+import android.view.MotionEvent;
 import android.view.TextureView;
 import android.view.View;
+import android.view.ViewGroup;
 
 import com.ikota.vinelikeapp.R;
 import com.ikota.vinelikeapp.util.CameraHelper;
 import com.ikota.vinelikeapp.util.CombineVideoTask;
+import com.ikota.vinelikeapp.util.VineHelper;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
 
 
 public class MainActivity extends Activity implements TextureView.SurfaceTextureListener{
@@ -46,8 +52,16 @@ public class MainActivity extends Activity implements TextureView.SurfaceTexture
 
     private boolean isRecording = false;
 
+    private long startRecordingTime;
+    private long currentRecordingTime;
+
+    private View mHeaderOverlay;
     private CamcorderProfile mProfile;
     private ArrayList<File> mMovies = new ArrayList<>();
+
+    private Handler mHandler;
+    private Timer mTimer;
+    private TimerTask mTimerTask;
 
 
     @Override
@@ -55,17 +69,56 @@ public class MainActivity extends Activity implements TextureView.SurfaceTexture
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        mHandler = new Handler();
+        mHeaderOverlay = findViewById(R.id.header_overlay);
+
         mPreview = (TextureView) findViewById(R.id.surface_view);
         mPreview.setSurfaceTextureListener(this);
         mPreview.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                if (isRecording) {
-                    mMediaRecorder.stop();  // stop the recording
-                    isRecording = false;
-                } else {
-                    new MediaPrepareTask().execute(null, null, null);
+//                if (isRecording) {
+//                    mMediaRecorder.stop();  // stop the recording
+//                    isRecording = false;
+//                } else {
+//                    new MediaPrepareTask().execute(null, null, null);
+//                }
+//                int currentWidth = mHeaderOverlay.getWidth();
+//                int targetWidth = mHeaderOverlay.getWidth() + 100;
+//                ValueAnimator widthAnimator = ValueAnimator.ofInt(currentWidth, targetWidth);
+//                widthAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+//                    @Override
+//                    public void onAnimationUpdate(ValueAnimator valueAnimator) {
+//                        int val = (Integer) valueAnimator.getAnimatedValue();
+//                        ViewGroup.LayoutParams layoutParams = mHeaderOverlay.getLayoutParams();
+//                        layoutParams.width = val;
+//                        mHeaderOverlay.setLayoutParams(layoutParams);
+//                    }
+//                });
+//                widthAnimator.setDuration(1000);
+//                widthAnimator.start();
+            }
+        });
+
+        mPreview.setOnTouchListener(new View.OnTouchListener() {
+            @Override
+            public boolean onTouch(View view, MotionEvent event) {
+                switch (event.getAction()) {
+                    case MotionEvent.ACTION_DOWN:
+                        startRecordingTime = System.currentTimeMillis();
+                        mTimerTask = new UpdateProgressTask();
+                        mTimer = new Timer(true);
+                        mTimer.schedule(mTimerTask, 100, 100);
+                        new MediaPrepareTask().execute(null, null, null);
+                        Log.d("time", String.format("startRecordingTime:%d(mills)",startRecordingTime));
+                        break;
+                    case MotionEvent.ACTION_UP:
+                        mTimer.cancel();
+                        mTimer = null;
+                        mMediaRecorder.stop();  // stop the recording
+                        break;
                 }
+                return false;
             }
         });
 
@@ -75,6 +128,30 @@ public class MainActivity extends Activity implements TextureView.SurfaceTexture
                 new CombineVideoTask(MainActivity.this, mMovies).execute();
             }
         });
+    }
+
+    private void updateProgress() {
+        long current_time = System.currentTimeMillis();
+        currentRecordingTime += current_time - startRecordingTime;
+        ViewGroup.LayoutParams layoutParams = mHeaderOverlay.getLayoutParams();
+        layoutParams.width = VineHelper.calcProgressSize(currentRecordingTime);
+        mHeaderOverlay.setLayoutParams(layoutParams);
+        Log.d("time", String.format("finishRecordingTime:%d(mills)", current_time));
+        Log.d("time", String.format("pressed time:%f(s)"           , (current_time - startRecordingTime)/1000.0));
+        Log.d("time", String.format("currentRecordingTime:%f(s)"   , currentRecordingTime/1000.0));
+        startRecordingTime = current_time;
+    }
+
+    private class UpdateProgressTask extends TimerTask {
+        @Override
+        public void run() {
+            mHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    updateProgress();
+                }
+            });
+        }
     }
 
     @Override
