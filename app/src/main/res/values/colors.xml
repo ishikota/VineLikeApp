@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <color name="white_dull">#FAFAFA</color>
+    <color name="black">#0D0F14</color>
+    <color name="teal">#00BFA5</color>
+    <color name="pink_A100">#FF80AB</color>
+    <color name="pink_A200">#FF4081</color>
+    <color name="pink_A400">#F50057</color>
+    <color name="pink_A700">#C51162</color>
+
+    <color name="swipe_color_1">@color/pink_A100</color>
+    <color name="swipe_color_2">@color/pink_A200</color>
+    <color name="swipe_color_3">@color/pink_A400</color>
+    <color name="swipe_color_4">@color/pink_A700</color>
+
+    <color name="base">@color/white_dull</color>
+    <color name="accent">@color/pink_A200</color>
+    <color name="primary">@color/black</color>
+    <color name="primary_dark">@android:color/black</color>
+    <color name="status_bar">@android:color/black</color>
+    <color name="navigation_bar">@android:color/black</color>
+
+    <color name="text_color_primary">@android:color/white</color>
+    <!--<color name="text_color_secondary">@color/dark_gray</color>-->
+    <!--<color name="text_color_tertiary">@color/gray</color>-->
+    <!--<color name="text_color_hint">@color/border</color>-->
+
+</resources>
